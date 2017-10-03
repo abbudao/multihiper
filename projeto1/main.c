@@ -8,6 +8,7 @@ int main(int argc, char *argv[]) {
   BMPINFOHEADER header;
   unsigned char ***rgb_channels;
   unsigned char ***YCbCr_channels;
+  unsigned char ***reconverted_channels;
   printf("intializing \n");
   printf("Read_io \n");
   read_io(argv[1], argv[2],&fEntrada,&fSaida);
@@ -19,6 +20,7 @@ int main(int argc, char *argv[]) {
   rgb_channels=  intialize_channels(header);
   rgb_channels= fileto_rgb(header,fEntrada, rgb_channels);
   YCbCr_channels=RGB2YCbCr(rgb_channels, header);
+ reconverted_channels=YCbCr2RGB(YCbCr_channels,header) ;
   printf("read_channels \n");
   /* read_channels(fEntrada, rgb_channels); */
   printf("debug_channels \n");
@@ -26,9 +28,12 @@ int main(int argc, char *argv[]) {
   printf("header_Write\n");
   header_write(fSaida,bmpnum,fHeader,header);
   printf("rgb_tofile\n");
-  rgb_tofile(rgb_channels,fSaida,header);
+  rgb_tofile(reconverted_channels,fSaida,header);
+  printf("%d",reconverted_channels[0][1][2]);
   printf("free \n");
   free_channels(header,rgb_channels);
+  free_channels(header,YCbCr_channels);
+  free_channels(header,reconverted_channels);
   printf("close_io \n");
   close_io(fEntrada,fSaida);
   return 0;
