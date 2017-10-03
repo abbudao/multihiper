@@ -104,7 +104,7 @@ unsigned char ***RGB2YCbCr(unsigned char ***rgb_channels,
       YCbCr_channels[1][i][j] =
           (unsigned char)(0.564 * ((float)rgb_channels[0][i][j] -
                                    (float)YCbCr_channels[0][i][j]));
-      YCbCr_channels[1][i][j] =
+      YCbCr_channels[2][i][j] =
           (unsigned char)(0.713 * ((float)rgb_channels[2][i][j] -
                                    (float)YCbCr_channels[0][i][j]));
     }
