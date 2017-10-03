@@ -1,6 +1,7 @@
 #include "bmp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 unsigned char ***RGB2YCbCr(unsigned char ***rgb_channel, BMPINFOHEADER header);
 unsigned char ***YCbCr2RGB(unsigned char ***YCbCr_channels,
@@ -102,11 +103,11 @@ unsigned char ***RGB2YCbCr(unsigned char ***rgb_channels,
                           0.587 * (float)rgb_channels[1][i][j] +
                           0.299 * (float)rgb_channels[2][i][j]);
       YCbCr_channels[1][i][j] =
-          (unsigned char)(0.564 * ((float)rgb_channels[0][i][j] -
-                                   (float)YCbCr_channels[0][i][j]));
+          (unsigned char)(128+0.5*(float)rgb_channels[0][i][j] -0.331264*(float)rgb_channels[1][i][j]+
+                                   -0.168736*(float)YCbCr_channels[0][i][j]);
       YCbCr_channels[1][i][j] =
-          (unsigned char)(0.713 * ((float)rgb_channels[2][i][j] -
-                                   (float)YCbCr_channels[0][i][j]));
+          (unsigned char)(128- 0.081312* ((float)rgb_channels[0][i][j]) -
+                                   (0.418688*(float)rgb_channels[1][i][j]) +(0.5*(float)rgb_channels[2][i][j]));
     }
   }
   return YCbCr_channels;
@@ -121,16 +122,17 @@ unsigned char ***YCbCr2RGB(unsigned char ***YCbCr_channels,
       /*Blue mask */
       rgb_channels[0][i][j] =
           (unsigned char)((float)YCbCr_channels[0][i][j] +
-                          1.772 * (float)YCbCr_channels[1][i][j]);
+                          roundf(1.772 * (float)(YCbCr_channels[2][i][j]-128)));
+
       /*Green mask */
       rgb_channels[1][i][j] =
-          (unsigned char)((float)YCbCr_channels[0][i][j] -
-                          0.344 * (float)YCbCr_channels[1][i][j] -
-                          0.714 * (float)YCbCr_channels[2][i][j]);
+          (unsigned char)(roundf((float)YCbCr_channels[0][i][j]) -
+                          (roundf(0.344136 * (float)YCbCr_channels[1][i][j]-128)) -
+                          roundf(0.714136 * (float)(YCbCr_channels[2][i][j]-128)));
       /*Red mask */
       rgb_channels[2][i][j] =
           (unsigned char)((float)YCbCr_channels[0][i][j] +
-                          1.402 * (float)YCbCr_channels[2][i][j]);
+                          roundf(1.402* (float)(YCbCr_channels[1][i][j]-128)));
     }
   }
   return rgb_channels;
