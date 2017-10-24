@@ -3,6 +3,8 @@
 int test_colorspacechange(unsigned char ***reference,
                           unsigned char ***converted, BMPINFOHEADER header);
 
+int test_dct();
+
 int main(int argc, char *argv[]) {
   FILE *fEntrada;
   FILE *fSaida;
@@ -12,6 +14,7 @@ int main(int argc, char *argv[]) {
   unsigned char ***rgb_channels;
   double ***YCbCr_channels;
   unsigned char ***reverted_channels;
+  double **matrix_dct;
   read_io("teste.bmp", "tested.bmp", &fEntrada, &fSaida);
   bmp_magic(fEntrada, &bmpnum, &fHeader, &header);
   rgb_channels = intialize_channels(header);
@@ -21,6 +24,7 @@ int main(int argc, char *argv[]) {
   test_colorspacechange(rgb_channels, reverted_channels, header);
   header_write(fSaida,bmpnum,fHeader,header);
   rgb_tofile(reverted_channels,fSaida,header);
+  matrix_dct = dct_transform(YCbCr_channels[0],header.biWidth, header.biHeight);
   free_channels(header,rgb_channels);
   free_channels_double(header,YCbCr_channels);
   free_channels(header,reverted_channels);
@@ -54,4 +58,10 @@ int test_colorspacechange(unsigned char ***reference,
     printf("Mismatch percentage: %f \n",mistmatch_percent);
     return 0;
   }
+
 }
+
+  /* int test_dct(){ */
+
+/* return  1; */
+  /* } */

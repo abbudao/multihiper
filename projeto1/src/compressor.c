@@ -5,33 +5,32 @@
 
 double ***RGB2YCbCr(unsigned char ***rgb_channel, BMPINFOHEADER header);
 unsigned char ***YCbCr2RGB(double ***YCbCr_channels,
-                           BMPINFOHEADER header);
+    BMPINFOHEADER header);
 double ****create_double_blocks(double ***channels);
-double ***dct_transform(double ***channels,
-                           BMPINFOHEADER header);
-
+double **dct_transform(double **channel,int width,int height);
+double **intialize_dct_coefficients(int height, int width);
 double ***intialize_channels_double(BMPINFOHEADER header);
 void free_channels_double(BMPINFOHEADER header, double ***channels);
 void debug_bmp(BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-               BMPINFOHEADER header);
+    BMPINFOHEADER header);
 void debug_channels(unsigned char ***channels, BMPINFOHEADER header);
 unsigned char ***intialize_channels(BMPINFOHEADER header);
 void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-                  BMPINFOHEADER header);
+    BMPINFOHEADER header);
 void bmp_magic(FILE *fEntrada, BMPMAGICNUMBER *bmpnum, BMPFILEHEADER *fHeader,
-               BMPINFOHEADER *header);
+    BMPINFOHEADER *header);
 void rgb_tofile(unsigned char ***channels, FILE *fSaida, BMPINFOHEADER header);
 unsigned char bitsToByte(int bits[]);
 int error_happened(FILE *file, char *name);
 void read_channels(FILE *filein, unsigned char ***channels);
 void free_channels(BMPINFOHEADER header, unsigned char ***channels);
 unsigned char ***fileto_rgb(BMPINFOHEADER header, FILE *fEntrada,
-                            unsigned char ***channels);
+    unsigned char ***channels);
 void close_io(FILE *fEntrada, FILE *fSaida);
 int read_io(char *a, char *b, FILE **fEntrada, FILE **fSaida);
 
 void debug_bmp(BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-               BMPINFOHEADER header) {
+    BMPINFOHEADER header) {
   printf("\n bmpnum: %d", bmpnum.bfType);
   printf("\n offBits: %d", fHeader.bfOffBits);
   printf("\n Reserved1: %d", fHeader.bfReserved1);
@@ -51,7 +50,7 @@ void debug_bmp(BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
 }
 
 void debug_channels(unsigned char ***channels, BMPINFOHEADER header) {
-  int i, j, b, g, r;
+  int i, j; 
   for (i = 0; i < header.biHeight; i++) {
     for (j = 0; j < header.biWidth; j++) {
       printf("b[%d][%d] == %d", i, j, (int)channels[0][i][j]);
@@ -108,14 +107,14 @@ double ***intialize_channels_double(BMPINFOHEADER header) {
 }
 
 void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-                  BMPINFOHEADER header) {
+    BMPINFOHEADER header) {
   fwrite(&bmpnum, 2, 1, fSaida);
   fwrite(&fHeader, sizeof(BMPFILEHEADER), 1, fSaida);
   fwrite(&header, sizeof(BMPINFOHEADER), 1, fSaida);
 }
 
 double ***RGB2YCbCr(unsigned char ***rgb_channels,
-                           BMPINFOHEADER header) {
+    BMPINFOHEADER header) {
   double ***YCbCr_channels = intialize_channels_double(header);
   double Y, Cb, Cr, R, G, B;
   for (int i = 0; i < header.biHeight; i++) {
@@ -138,7 +137,7 @@ double ***RGB2YCbCr(unsigned char ***rgb_channels,
 }
 
 unsigned char ***YCbCr2RGB(double ***YCbCr_channels,
-                           BMPINFOHEADER header) {
+    BMPINFOHEADER header) {
   unsigned char ***rgb_channels = intialize_channels(header);
   double Y, Cb, Cr, R, G, B;
   for (int i = 0; i < header.biHeight; i++) {
@@ -186,20 +185,20 @@ int error_happened(FILE *file, char *name) {
   if (file == NULL) {
     printf("File named '%s' open error: ", name);
     switch (errno) {
-    case EPERM:
-      printf("Operation not permitted\n");
-      break;
-    case ENOENT:
-      printf("File not found\n");
-      break;
-    case EACCES:
-      printf("Permission denied\n");
-      break;
-    case ENAMETOOLONG:
-      printf("Filename is too long\n");
-      break;
-    default:
-      printf("Unknown error\n");
+      case EPERM:
+        printf("Operation not permitted\n");
+        break;
+      case ENOENT:
+        printf("File not found\n");
+        break;
+      case EACCES:
+        printf("Permission denied\n");
+        break;
+      case ENAMETOOLONG:
+        printf("Filename is too long\n");
+        break;
+      default:
+        printf("Unknown error\n");
     }
     return (1);
   } else {
@@ -224,7 +223,7 @@ void free_channels_double(BMPINFOHEADER header, double ***channels) {
 }
 
 unsigned char ***fileto_rgb(BMPINFOHEADER header, FILE *fEntrada,
-                            unsigned char ***channels) {
+    unsigned char ***channels) {
   int i, j, b, g, r;
   fseek(fEntrada, 54, SEEK_SET);
   for (i = 0; i < header.biHeight; i++) {
@@ -257,39 +256,51 @@ int read_io(char *a, char *b, FILE **fEntrada, FILE **fSaida) {
   return 1;
 }
 void bmp_magic(FILE *fEntrada, BMPMAGICNUMBER *bmpnum, BMPFILEHEADER *fHeader,
-               BMPINFOHEADER *header) {
+    BMPINFOHEADER *header) {
   fread(bmpnum, 2, 1, fEntrada);
   fread(fHeader, sizeof(BMPFILEHEADER), 1, fEntrada);
   fread(header, sizeof(BMPINFOHEADER), 1, fEntrada);
 }
-double ***dct_transform(double ***channels,
-                           BMPINFOHEADER header)
+double **intialize_dct_coefficients(int height, int width) {
+  int i;
+  double **dct_vector;
+  printf("Ola marilene");
+    dct_vector = malloc(sizeof(double *) * height);
+    if (dct_vector == NULL) {
+      printf("Memory exceeded");
+    }
+    for (i = 0; i < height; i++) {
+      dct_vector[i] = malloc(sizeof(double)* width);
+      if (dct_vector[i] == NULL) {
+        printf("Memory exceeded");
+      }
+    }
+  return dct_vector;
+}
+double **dct_transform(double **channel,int width,int height)                           
 {
-int count=0;
-int  extra_height=header.biHeight%8; 
-int  extra_width=header.biWidth%8;
-double **dct_vector=malloc(3*sizeof(double *));
-
-for (int a = 0; a< 3; a++ ) {
-dct_vector[a] = calloc((header.biHeight+1)*(header.biWidth+1),sizeof(double));
+  double **dct_vector = intialize_dct_coefficients(height, width);
+  float c;
+  for(int i=0;i<height;i++){
+    for(int j=0;j<width;j++){
+      c =  (i!=0 && j!=0)?1:0.5 ;
+      for(int x=0;x<height;x++){
+        for(int y=0;y<width;y++){
+          dct_vector[i][j] =+ c/4 * channel[x][y]*cos(((2*x+1)*i*M_PI)/16) *cos(((2*y+1)*j*M_PI)/16)  ;
+        }
+      }
+    }
+  }
+  /* for(int i=0;i<height;i++){ */
+  /*   for(int j=0;j<width;j++){ */
+  /*   printf("%f",dct_vector[i][j]); */
+  /*   }} */
+  return channel;
 }
 
-for (int i=0; i<(header.biHeight+extra_height);i=i+8){
-for (int j = 0; j< (header.biWidth+extra_width); j=j+8) {
- for (int k = 0; k< 8; k++ ) {
-   for (int l = 0;  l< 8; l++) {
-     float c =  k!=0 && j!=0?1:0.5 ;
-    /* dct_vector[0][count] =c/4 *channels[0][i+k][j+k]*cos(2) */
-   }
-   
- } 
- count++;
-}
-}
-return channels;
-}
 
-double ****create_double_blocks(double ***channels){
-  double ****block;
-  return(block) ;
-}
+
+/* double ****create_double_blocks(double ***channels, BMPINFOHEADER header){ */
+/*   double ****block; */
+/*   return(block) ; */
+/* } */
