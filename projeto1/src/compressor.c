@@ -1,18 +1,17 @@
 #include "bmp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
-unsigned char ***RGB2YCbCr(unsigned char ***rgb_channel, BMPINFOHEADER header);
-unsigned char ***YCbCr2RGB(unsigned char ***YCbCr_channels,
+double ***RGB2YCbCr(unsigned char ***rgb_channel, BMPINFOHEADER header);
+unsigned char ***YCbCr2RGB(double ***YCbCr_channels,
                            BMPINFOHEADER header);
-void writeR(unsigned char **R, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-            BMPINFOHEADER header);
-void writeG(unsigned char **G, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-            BMPINFOHEADER header);
-void writeB(unsigned char **B, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-            BMPINFOHEADER header);
-void writeY(double **Y, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-            BMPINFOHEADER header);
+double ****create_double_blocks(double ***channels);
+double ***dct_transform(double ***channels,
+                           BMPINFOHEADER header);
+
+double ***intialize_channels_double(BMPINFOHEADER header);
+void free_channels_double(BMPINFOHEADER header, double ***channels);
 void debug_bmp(BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
                BMPINFOHEADER header);
 void debug_channels(unsigned char ***channels, BMPINFOHEADER header);
@@ -84,6 +83,30 @@ unsigned char ***intialize_channels(BMPINFOHEADER header) {
   }
   return channels;
 }
+double ***intialize_channels_double(BMPINFOHEADER header) {
+  int i, j;
+  double ***channels;
+  channels = malloc(3 * sizeof(double **));
+  if (channels == NULL) {
+    printf("Memory exceeded");
+  }
+  for (i = 0; i < 3; i++) {
+    channels[i] = malloc(sizeof(double *) * header.biHeight);
+    if (channels[i] == NULL) {
+      printf("Memory exceeded");
+    }
+  }
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < header.biHeight; j++) {
+      channels[i][j] = malloc(sizeof(double) * header.biWidth);
+      if (channels[i][j] == NULL) {
+        printf("Memory exceeded");
+      }
+    }
+  }
+  return channels;
+}
+
 void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
                   BMPINFOHEADER header) {
   fwrite(&bmpnum, 2, 1, fSaida);
@@ -91,46 +114,49 @@ void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
   fwrite(&header, sizeof(BMPINFOHEADER), 1, fSaida);
 }
 
-unsigned char ***RGB2YCbCr(unsigned char ***rgb_channels,
+double ***RGB2YCbCr(unsigned char ***rgb_channels,
                            BMPINFOHEADER header) {
-  unsigned char ***YCbCr_channels = intialize_channels(header);
+  double ***YCbCr_channels = intialize_channels_double(header);
+  double Y, Cb, Cr, R, G, B;
   for (int i = 0; i < header.biHeight; i++) {
     for (int j = 0; j < header.biWidth; j++) {
-      /* printf("%d %d %d", b, g, r); */
-      YCbCr_channels[0][i][j] =
-          (unsigned char)(0.114 * (float)rgb_channels[0][i][j] +
-                          0.587 * (float)rgb_channels[1][i][j] +
-                          0.299 * (float)rgb_channels[2][i][j]);
-      YCbCr_channels[1][i][j] =
-          (unsigned char)(0.564 * ((float)rgb_channels[0][i][j] -
-                                   (float)YCbCr_channels[0][i][j]));
-      YCbCr_channels[2][i][j] =
-          (unsigned char)(0.713 * ((float)rgb_channels[2][i][j] -
-                                   (float)YCbCr_channels[0][i][j]));
+      R = (double)rgb_channels[2][i][j];
+      G = (double)rgb_channels[1][i][j];
+      B = (double)rgb_channels[0][i][j];
+      Y = 0.114 * B + 0.587 * G + 0.299 * R ;
+      /* Y= Y>255? 255 : Y; */
+      Cb = 0.564 * (B - Y);
+      /* Cb= Cb>255? 255 : Cb; */
+      Cr = 0.713 * (R - Y);
+      /* Cr= Cr>255? 255 : Cr; */
+      YCbCr_channels[0][i][j] = Y;
+      YCbCr_channels[1][i][j] = Cb;
+      YCbCr_channels[2][i][j] = Cr;
     }
   }
   return YCbCr_channels;
 }
 
-unsigned char ***YCbCr2RGB(unsigned char ***YCbCr_channels,
+unsigned char ***YCbCr2RGB(double ***YCbCr_channels,
                            BMPINFOHEADER header) {
   unsigned char ***rgb_channels = intialize_channels(header);
+  double Y, Cb, Cr, R, G, B;
   for (int i = 0; i < header.biHeight; i++) {
     for (int j = 0; j < header.biWidth; j++) {
-      /* printf("%d %d %d", b, g, r); */
+      Y = YCbCr_channels[0][i][j];
+      Cb = YCbCr_channels[1][i][j];
+      Cr = YCbCr_channels[2][i][j];
+      /* Cb =(double) YCbCr_channels[1][i][j]-128; */
+      /* Cr =(double) YCbCr_channels[2][i][j]-128; */
+      R = Y + 1.402 * Cr;
+      G = Y - 0.344 * Cb - 0.714 * Cr;
+      B = Y + 1.772 * Cb;
       /*Blue mask */
-      rgb_channels[0][i][j] =
-          (unsigned char)((float)YCbCr_channels[0][i][j] +
-                          1.772 * (float)YCbCr_channels[1][i][j]);
+      rgb_channels[0][i][j] = (unsigned char)round(B);
       /*Green mask */
-      rgb_channels[1][i][j] =
-          (unsigned char)((float)YCbCr_channels[0][i][j] -
-                          0.344 * (float)YCbCr_channels[1][i][j] -
-                          0.714 * (float)YCbCr_channels[2][i][j]);
+      rgb_channels[1][i][j] = (unsigned char)round(G);
       /*Red mask */
-      rgb_channels[2][i][j] =
-          (unsigned char)((float)YCbCr_channels[0][i][j] +
-                          1.402 * (float)YCbCr_channels[2][i][j]);
+      rgb_channels[2][i][j] = (unsigned char)round(R);
     }
   }
   return rgb_channels;
@@ -188,6 +214,15 @@ void free_channels(BMPINFOHEADER header, unsigned char ***channels) {
     free(channels[i]);
   }
 }
+void free_channels_double(BMPINFOHEADER header, double ***channels) {
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < header.biHeight; j++) {
+      free(channels[i][j]);
+    }
+    free(channels[i]);
+  }
+}
+
 unsigned char ***fileto_rgb(BMPINFOHEADER header, FILE *fEntrada,
                             unsigned char ***channels) {
   int i, j, b, g, r;
@@ -226,4 +261,35 @@ void bmp_magic(FILE *fEntrada, BMPMAGICNUMBER *bmpnum, BMPFILEHEADER *fHeader,
   fread(bmpnum, 2, 1, fEntrada);
   fread(fHeader, sizeof(BMPFILEHEADER), 1, fEntrada);
   fread(header, sizeof(BMPINFOHEADER), 1, fEntrada);
+}
+double ***dct_transform(double ***channels,
+                           BMPINFOHEADER header)
+{
+int count=0;
+int  extra_height=header.biHeight%8; 
+int  extra_width=header.biWidth%8;
+double **dct_vector=malloc(3*sizeof(double *));
+
+for (int a = 0; a< 3; a++ ) {
+dct_vector[a] = calloc((header.biHeight+1)*(header.biWidth+1),sizeof(double));
+}
+
+for (int i=0; i<(header.biHeight+extra_height);i=i+8){
+for (int j = 0; j< (header.biWidth+extra_width); j=j+8) {
+ for (int k = 0; k< 8; k++ ) {
+   for (int l = 0;  l< 8; l++) {
+     float c =  k!=0 && j!=0?1:0.5 ;
+    /* dct_vector[0][count] =c/4 *channels[0][i+k][j+k]*cos(2) */
+   }
+   
+ } 
+ count++;
+}
+}
+return channels;
+}
+
+double ****create_double_blocks(double ***channels){
+  double ****block;
+  return(block) ;
 }

@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
   BMPFILEHEADER fHeader;
   BMPINFOHEADER header;
   unsigned char ***rgb_channels;
-  unsigned char ***YCbCr_channels;
+  double ***YCbCr_channels;
   unsigned char ***reconverted_channels;
   printf("intializing \n");
   printf("Read_io \n");
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   printf("%d",reconverted_channels[0][1][2]);
   printf("free \n");
   free_channels(header,rgb_channels);
-  free_channels(header,YCbCr_channels);
+  free_channels_double(header,YCbCr_channels);
   free_channels(header,reconverted_channels);
   printf("close_io \n");
   close_io(fEntrada,fSaida);
