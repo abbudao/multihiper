@@ -1,33 +1,39 @@
 #include "bmp.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-
+#include <math.h> 
 double ***RGB2YCbCr(unsigned char ***rgb_channel, BMPINFOHEADER header);
-unsigned char ***YCbCr2RGB(double ***YCbCr_channels,
-    BMPINFOHEADER header);
+unsigned char ***YCbCr2RGB(double ***YCbCr_channels,BMPINFOHEADER header);
+
 double ****create_double_blocks(double ***channels);
 double **dct_transform(double **channel,int width,int height);
+void dct_untransform(double **coeficients,double **channel,int width,int height);
+
 double **intialize_dct_coefficients(int height, int width);
-double ***intialize_channels_double(BMPINFOHEADER header);
-void free_channels_double(BMPINFOHEADER header, double ***channels);
-void debug_bmp(BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-    BMPINFOHEADER header);
-void debug_channels(unsigned char ***channels, BMPINFOHEADER header);
-unsigned char ***intialize_channels(BMPINFOHEADER header);
+double ***intialize_channels_double(int height, int width);
+unsigned char ***intialize_channels(int height, int width);
+
+void free_channels_double(int height, int width, double ***channels);
+void free_channels(int height,int width ,unsigned char ***channels);
+
+
 void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
     BMPINFOHEADER header);
 void bmp_magic(FILE *fEntrada, BMPMAGICNUMBER *bmpnum, BMPFILEHEADER *fHeader,
     BMPINFOHEADER *header);
+
 void rgb_tofile(unsigned char ***channels, FILE *fSaida, BMPINFOHEADER header);
 unsigned char bitsToByte(int bits[]);
-int error_happened(FILE *file, char *name);
 void read_channels(FILE *filein, unsigned char ***channels);
-void free_channels(BMPINFOHEADER header, unsigned char ***channels);
-unsigned char ***fileto_rgb(BMPINFOHEADER header, FILE *fEntrada,
-    unsigned char ***channels);
-void close_io(FILE *fEntrada, FILE *fSaida);
 int read_io(char *a, char *b, FILE **fEntrada, FILE **fSaida);
+unsigned char ***fileto_rgb(BMPINFOHEADER header, FILE *fEntrada,unsigned char ***channels);
+
+void close_io(FILE *fEntrada, FILE *fSaida);
+
+void debug_bmp(BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
+    BMPINFOHEADER header);
+void debug_channels(unsigned char ***channels, BMPINFOHEADER header);
+int error_happened(FILE *file, char *name);
 
 void debug_bmp(BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
     BMPINFOHEADER header) {
@@ -59,7 +65,7 @@ void debug_channels(unsigned char ***channels, BMPINFOHEADER header) {
     }
   }
 }
-unsigned char ***intialize_channels(BMPINFOHEADER header) {
+unsigned char ***intialize_channels (int height, int width){
   int i, j;
   unsigned char ***channels;
   channels = malloc(3 * sizeof(unsigned char **));
@@ -67,14 +73,14 @@ unsigned char ***intialize_channels(BMPINFOHEADER header) {
     printf("Memory exceeded");
   }
   for (i = 0; i < 3; i++) {
-    channels[i] = malloc(sizeof(unsigned char *) * header.biHeight);
+    channels[i] = malloc(sizeof(unsigned char *) * height);
     if (channels[i] == NULL) {
       printf("Memory exceeded");
     }
   }
   for (i = 0; i < 3; i++) {
-    for (j = 0; j < header.biHeight; j++) {
-      channels[i][j] = malloc(sizeof(unsigned char) * header.biWidth);
+    for (j = 0; j < height; j++) {
+      channels[i][j] = malloc(sizeof(unsigned char) * height);
       if (channels[i][j] == NULL) {
         printf("Memory exceeded");
       }
@@ -82,7 +88,7 @@ unsigned char ***intialize_channels(BMPINFOHEADER header) {
   }
   return channels;
 }
-double ***intialize_channels_double(BMPINFOHEADER header) {
+double ***intialize_channels_double(int height, int width) {
   int i, j;
   double ***channels;
   channels = malloc(3 * sizeof(double **));
@@ -90,14 +96,14 @@ double ***intialize_channels_double(BMPINFOHEADER header) {
     printf("Memory exceeded");
   }
   for (i = 0; i < 3; i++) {
-    channels[i] = malloc(sizeof(double *) * header.biHeight);
+    channels[i] = malloc(sizeof(double *) * height);
     if (channels[i] == NULL) {
       printf("Memory exceeded");
     }
   }
   for (i = 0; i < 3; i++) {
-    for (j = 0; j < header.biHeight; j++) {
-      channels[i][j] = malloc(sizeof(double) * header.biWidth);
+    for (j = 0; j < height; j++) {
+      channels[i][j] = malloc(sizeof(double) * width);
       if (channels[i][j] == NULL) {
         printf("Memory exceeded");
       }
@@ -115,8 +121,9 @@ void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
 
 double ***RGB2YCbCr(unsigned char ***rgb_channels,
     BMPINFOHEADER header) {
-  double ***YCbCr_channels = intialize_channels_double(header);
+  double ***YCbCr_channels = intialize_channels_double(header.biHeight,header.biWidth);
   double Y, Cb, Cr, R, G, B;
+  printf("First contact the area");
   for (int i = 0; i < header.biHeight; i++) {
     for (int j = 0; j < header.biWidth; j++) {
       R = (double)rgb_channels[2][i][j];
@@ -133,12 +140,13 @@ double ***RGB2YCbCr(unsigned char ***rgb_channels,
       YCbCr_channels[2][i][j] = Cr;
     }
   }
+  printf("Clearing the area");
   return YCbCr_channels;
 }
 
 unsigned char ***YCbCr2RGB(double ***YCbCr_channels,
     BMPINFOHEADER header) {
-  unsigned char ***rgb_channels = intialize_channels(header);
+  unsigned char ***rgb_channels = intialize_channels(header.biHeight, header.biWidth);
   double Y, Cb, Cr, R, G, B;
   for (int i = 0; i < header.biHeight; i++) {
     for (int j = 0; j < header.biWidth; j++) {
@@ -205,17 +213,17 @@ int error_happened(FILE *file, char *name) {
     return (0);
   }
 }
-void free_channels(BMPINFOHEADER header, unsigned char ***channels) {
+void free_channels(int height, int width , unsigned char ***channels) {
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < header.biHeight; j++) {
+    for (int j = 0; j < height; j++) {
       free(channels[i][j]);
     }
     free(channels[i]);
   }
 }
-void free_channels_double(BMPINFOHEADER header, double ***channels) {
+void free_channels_double(int height, int width, double ***channels) {
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < header.biHeight; j++) {
+    for (int j = 0; j < height; j++) {
       free(channels[i][j]);
     }
     free(channels[i]);
@@ -291,13 +299,22 @@ double **dct_transform(double **channel,int width,int height)
       }
     }
   }
-  /* for(int i=0;i<height;i++){ */
-  /*   for(int j=0;j<width;j++){ */
-  /*   printf("%f",dct_vector[i][j]); */
-  /*   }} */
   return channel;
 }
-
+void dct_untransform(double **coeficients,double **channel,int width,int height)
+{
+  float c;
+  for(int i=0;i<height;i++){
+    for(int j=0;j<width;j++){
+      c =  (i!=0 && j!=0)?1:0.5 ;
+      for(int x=0;x<height;x++){
+        for(int y=0;y<width;y++){
+          channel[i][j] =+ c/4 * coeficients[x][y]*cos(((2*x+1)*i*M_PI)/16) *cos(((2*y+1)*j*M_PI)/16)  ;
+        }
+      }
+    }
+  }
+}
 
 
 /* double ****create_double_blocks(double ***channels, BMPINFOHEADER header){ */

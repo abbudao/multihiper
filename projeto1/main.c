@@ -17,10 +17,10 @@ int main(int argc, char *argv[]) {
   printf("debug_bmp \n");
   /* debug_bmp(bmpnum, fHeader, header); */
   printf("intialize_channels \n");
-  rgb_channels=  intialize_channels(header);
+  rgb_channels=  intialize_channels(header.biHeight,header.biWidth);
   rgb_channels= fileto_rgb(header,fEntrada, rgb_channels);
   YCbCr_channels=RGB2YCbCr(rgb_channels, header);
- reconverted_channels=YCbCr2RGB(YCbCr_channels,header) ;
+ /* reconverted_channels=YCbCr2RGB(YCbCr_channels,header) ; */
   printf("read_channels \n");
   /* read_channels(fEntrada, rgb_channels); */
   printf("debug_channels \n");
@@ -31,9 +31,9 @@ int main(int argc, char *argv[]) {
   rgb_tofile(reconverted_channels,fSaida,header);
   printf("%d",reconverted_channels[0][1][2]);
   printf("free \n");
-  free_channels(header,rgb_channels);
-  free_channels_double(header,YCbCr_channels);
-  free_channels(header,reconverted_channels);
+  free_channels(header.biHeight, header.biWidth,rgb_channels);
+  free_channels_double(header.biHeight, header.biWidth,YCbCr_channels);
+  free_channels(header.biHeight, header.biWidth,reconverted_channels);
   printf("close_io \n");
   close_io(fEntrada,fSaida);
   return 0;
