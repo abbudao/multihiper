@@ -30,7 +30,6 @@ int main(int argc, char *argv[]) {
   header_write(fSaida,bmpnum,fHeader,header);
   printf("rgb_tofile\n");
   rgb_tofile(reconverted_channels,fSaida,header);
-  printf("%d",reconverted_channels[0][1][2]);
   printf("free \n");
   free_channels(header.biHeight, header.biWidth,rgb_channels);
   free_channels_double(header.biHeight, header.biWidth,YCbCr_channels);
