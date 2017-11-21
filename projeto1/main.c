@@ -18,13 +18,14 @@ int main(int argc, char *argv[]) {
   /* debug_bmp(bmpnum, fHeader, header); */
   printf("intialize_channels \n");
   rgb_channels=  intialize_channels(header.biHeight,header.biWidth);
-  rgb_channels= fileto_rgb(header,fEntrada, rgb_channels);
-  YCbCr_channels=RGB2YCbCr(rgb_channels, header);
- /* reconverted_channels=YCbCr2RGB(YCbCr_channels,header) ; */
+  printf("fileto_rgb \n");
+  fileto_rgb(header,fEntrada, rgb_channels);
+  printf("rgb2ycbcr \n");
+  YCbCr_channels=RGB2YCbCr(rgb_channels, header.biHeight, header.biWidth);
+  printf("YCbCr2RGB\n");
+  reconverted_channels=YCbCr2RGB(YCbCr_channels,header.biHeight, header.biWidth) ;
   printf("read_channels \n");
-  /* read_channels(fEntrada, rgb_channels); */
   printf("debug_channels \n");
-  /*  debug_channels(rgb_channels, header);*/
   printf("header_Write\n");
   header_write(fSaida,bmpnum,fHeader,header);
   printf("rgb_tofile\n");
