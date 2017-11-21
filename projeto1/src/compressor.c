@@ -1,43 +1,64 @@
 #include "bmp.h"
+#include "color_channel.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h> 
-static const double quantization_table[8][8]={
-  {16,11 ,10,16,24,40,51,61},
-  {12,12,14,19,26,58,60,55},
-  {1413,16,24,40,57,69,56},
-  {14,17,22,29,51,87,80,62},
-  {18,22,37,56,68,109,103,77},
-  {24,35,55,64,81,104,113,92}, 
-  {49,64,78,87,103,121,120,101},
-  {72,92,95,98,112,100,103,99}};
+static const double quantization_Y[8][8]={
+  {16, 11, 10, 16, 24,  40,  51,  61},
+  {12, 12, 14, 19, 26,  58,  60,  55},
+  {14, 13, 16, 24, 40,  57,  69,  56},
+  {14, 17, 22, 29, 51,  87,  80,  62},
+  {18, 22, 37, 56, 68,  109, 103, 77},
+  {24, 35, 55, 64, 81,  104, 113, 92},
+  {49, 64, 78, 87, 103, 121, 120, 101},
+  {72, 92, 95, 98, 112, 100, 103, 99}};
+static const double quantization_Cb[8][8]={
+  {16, 11, 10, 16, 24,  40,  51,  61},
+  {12, 12, 14, 19, 26,  58,  60,  55},
+  {14, 13, 16, 24, 40,  57,  69,  56},
+  {14, 17, 22, 29, 51,  87,  80,  62},
+  {18, 22, 37, 56, 68,  109, 103, 77},
+  {24, 35, 55, 64, 81,  104, 113, 92},
+  {49, 64, 78, 87, 103, 121, 120, 101},
+  {72, 92, 95, 98, 112, 100, 103, 99}};
+static const double quantization_Cr[8][8]={
+  {16, 11, 10, 16, 24,  40,  51,  61},
+  {12, 12, 14, 19, 26,  58,  60,  55},
+  {14, 13, 16, 24, 40,  57,  69,  56},
+  {14, 17, 22, 29, 51,  87,  80,  62},
+  {18, 22, 37, 56, 68,  109, 103, 77},
+  {24, 35, 55, 64, 81,  104, 113, 92},
+  {49, 64, 78, 87, 103, 121, 120, 101},
+  {72, 92, 95, 98, 112, 100, 103, 99}};
+
+
 static const double dct_table[8][8]={
-  {    1,     19,    37,    55,    73,    91,    109,   127},
-  {    19,    37,    55,    73,    91,    109,   127,   145},
-  {    37,    55,    73,    91,    109,   127,   145,   163},
-  {    55,    73,    91,    109,   127,   145,   163,   181},
-  {    73,    91,    109,   127,   145,   163,   181,   199},
-  {    91,    109,   127,   145,   163,   181,   199,   217},
-  {    109,   127,   145,   163,   181,   199,   217,   235},
-  {    127,   145,   163,   181,   199,   217,   235,   253}};
+  {1,   19,  37,  55,  73,  91,  109, 127},
+  {19,  37,  55,  73,  91,  109, 127, 145},
+  {37,  55,  73,  91,  109, 127, 145, 163},
+  {55,  73,  91,  109, 127, 145, 163, 181},
+  {73,  91,  109, 127, 145, 163, 181, 199},
+  {91,  109, 127, 145, 163, 181, 199, 217},
+  {109, 127, 145, 163, 181, 199, 217, 235},
+  {127, 145, 163, 181, 199, 217, 235, 253}};
 
-  double ***RGB2YCbCr(unsigned char ***rgb_channel, int height ,int width);
-  unsigned char ***YCbCr2RGB(double ***YCbCr_channels,int height, int width);
+double ***RGB2YCbCr(unsigned char ***rgb_channel, int height ,int width);
+unsigned char ***YCbCr2RGB(double ***YCbCr_channels,int height, int width);
 
-  double ****create_double_blocks(double **channels,int height, int width);
-  void dct_transform(double **channel,double **dct_vector,int width,int height);
-  void dct_untransform(double **coeficients,double **channel,int width,int height);
+double ****create_double_blocks(double **channels,int height, int width);
+void dct_transform(double **channel,double **dct_vector,int width,int height);
+void dct_untransform(double **coeficients,double **channel,int width,int height);
 
-  double **intialize_dct_coefficients(int height, int width);
-  double ***intialize_channels_double(int height, int width);
-  unsigned char ***intialize_channels(int height, int width);
+double **intialize_dct_coefficients(int height, int width);
+double ***intialize_channels_double(int height, int width);
+unsigned char ***intialize_channels(int height, int width);
 
-  void free_channels_double(int height, int width, double ***channels);
-  void free_channels(int height,int width ,unsigned char ***channels);
+void free_channels_double(int height, int width, double ***channels);
+void free_channels(int height,int width ,unsigned char ***channels);
 
 
-  void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
-      BMPINFOHEADER header);
+void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
+    BMPINFOHEADER header);
 void bmp_magic(FILE *fEntrada, BMPMAGICNUMBER *bmpnum, BMPFILEHEADER *fHeader,
     BMPINFOHEADER *header);
 
@@ -313,7 +334,7 @@ double **intialize_dct_coefficients(int height, int width) {
 void dct_transform(double **channel,double **dct_vector,int width,int height)                           
 {
   double **channel_aux =  intialize_dct_coefficients(height,width);
-  float c;
+  double ck1,ck2;
 
   /* for(int i=0;i<height;i++) */
   /* { */
@@ -329,29 +350,31 @@ void dct_transform(double **channel,double **dct_vector,int width,int height)
       channel_aux[i][j]= dct_table[i][j];
     }
   }
-
-  for(int i=0;i<height;i++){
-    for(int j=0;j<width;j++){
-      c =  (i!=0 && j!=0)?1:0.5 ;
-      for(int x=0;x<height;x++){
-        for(int y=0;y<width;y++){
-          dct_vector[i][j] =+ c/4 * channel_aux[x][y]*cos(((2*x+1)*i*M_PI)/16) *cos(((2*y+1)*j*M_PI)/16);
+  for(int k1=0;k1<height;k1++){
+    for(int k2=0;k2<width;k2++){
+      ck1=  (k1==0)?1/sqrt(2.0):1 ;
+      ck2=  (k2==0)?1/sqrt(2.0):1 ;
+      for(int n1=0;n1<height;n1++){
+        for(int n2=0;n2<width;n2++){
+           dct_vector[k1][k2] =+ck1*ck2* channel_aux[n1][n2]*
+            cos((double)(2*k2+1) * (double)n2 * M_PI/16.0) *
+            cos((double)(2*k1+1) * (double)n1 * M_PI/16.0);
         }
       }
+      dct_vector[k1][k2]*=0.25;
     }
   }
   for(int i=0;i<height;i++){
     for(int j=0;j<width;j++){
-printf("dct_vector[%d][%d]=%f\n",i,j,dct_vector[i][j]);
+      printf("dct_vector[%d][%d]=%f\n",i,j,dct_vector[i][j]);
     }
   }
-
   free_dct_coefficients(height,width,channel_aux);
 }
 void dct_untransform(double **coeficients,double **channel,int width,int height)
 {
   double **coefficients_aux=  intialize_dct_coefficients(height,width);
-  float c;
+  double ck1,ck2; 
   for(int i=0;i<height;i++)
   {
     for(int j=0;j<width;j++)
@@ -359,12 +382,15 @@ void dct_untransform(double **coeficients,double **channel,int width,int height)
       coefficients_aux[i][j]= coeficients[i][j];
     }
   }
-  for(int i=0;i<height;i++){
-    for(int j=0;j<width;j++){
-      c =  (i!=0 && j!=0)?1:0.5 ;
-      for(int x=0;x<height;x++){
-        for(int y=0;y<width;y++){
-          channel[i][j] =+ c/4 * coefficients_aux[x][y]*cos(((2*x+1)*i*M_PI)/16) *cos(((2*y+1)*j*M_PI)/16)  ;
+  for(int k1=0;k1<height;k1++){
+    for(int k2=0;k2<width;k2++){
+      ck1=  (k1==0)?1/sqrt(2.0):1 ;
+      ck2=  (k2==0)?1/sqrt(2.0):1 ;
+      for(int n1=0;n1<height;n1++){
+        for(int n2=0;n2<width;n2++){
+      channel[k1][k2] =+ck1*ck2* coefficients_aux[n1][n2]*
+            cos((double)(2*n2+1) * (double)k2 * M_PI/16.0) *
+            cos((double)(2*n1+1) * (double)k1 * M_PI/16.0);
         }
       }
     }

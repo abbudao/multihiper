@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
   double ****double_blocks;
  matrix_dct=intialize_dct_coefficients(8,8) ;
  YCbCr_channels= intialize_channels_double(8,8);
+  printf("Original: %f \n",dct_table[0][0]);
   dct_transform(NULL,matrix_dct,8,8 );
   dct_untransform(matrix_dct,YCbCr_channels[0],8,8 );
   printf("Referencia: %f \n",matrix_dct[0][0]);
