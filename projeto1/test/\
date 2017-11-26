@@ -40,9 +40,9 @@ Test(colorspacechange, are_colors_acceptable) {
       if(abs(reverted_channels->R[i][j] - rgb_channels->R[i][j])>5)r++;
       if(abs(reverted_channels->G[i][j] - rgb_channels->G[i][j])>5)g++;
     }
-    cr_assert_eq(b,0,"There are %d %sBlue%s pixels that are wrong.",b,BLU,RESET);
-    cr_assert_eq(r,0,"There are %d %sRed%s pixels that are wrong.",r,RED,RESET);
-    cr_assert_eq(g,0,"There are %d %sGreen%s pixels that are wrong.",g,GRN,RESET);
+    cr_assert_eq(b,0,"There are %d %sBlue%s pixels that are wrong",b,BLU,RESET);
+    cr_assert_eq(r,0,"There are %d %sRed%s pixels that are wrong",r,RED,RESET);
+    cr_assert_eq(g,0,"There are %d %sGreen%s pixels that are wrong",g,GRN,RESET);
     header_write(fSaida, bmpnum, fHeader, header);
     rgb_tofile(rgb_channels, fSaida);
     free_rgb_channels(rgb_channels);
@@ -83,9 +83,9 @@ Test(colorspacechange, are_colors_equiv) {
       if(abs(reverted_channels->R[i][j] - rgb_channels->R[i][j])>2)r++;
       if(abs(reverted_channels->G[i][j] - rgb_channels->G[i][j])>2)g++;
     }
-    cr_assert_eq(b,0,"There are %d %sBlue%s pixels that are not equal.",b,BLU,RESET);
-    cr_assert_eq(r,0,"There are %d  %sRed%s pixels that are not equal.",r,RED,RESET);
-    cr_assert_eq(g,0,"There are %d %sGreen%s pixels that are not equal.",g,GRN,RESET);;
+    cr_assert_eq(b,0,"There are %d %sBlue%s pixels that are not equal",b,BLU,RESET);
+    cr_assert_eq(r,0,"There are %d  %sRed%s pixels that are not equal",r,RED,RESET);
+    cr_assert_eq(g,0,"There are %d %sGreen%s pixels that are not equal",g,GRN,RESET);;
     header_write(fSaida, bmpnum, fHeader, header);
     rgb_tofile(rgb_channels, fSaida);
     free_rgb_channels(rgb_channels);
@@ -126,9 +126,9 @@ Test(colorspacechange, are_colors_equal) {
       if(reverted_channels->R[i][j] != rgb_channels->R[i][j])r++;
       if(reverted_channels->G[i][j] != rgb_channels->G[i][j])g++;
     }
-    cr_assert_eq(b,0,"There are %d %sBlue%s pixels that are not perfectly matching.",b,BLU,RESET);
-    cr_assert_eq(r,0,"There are %d %sRed%s pixels that are not perfectly matching.",r,RED,RESET);
-    cr_assert_eq(g,0,"There are %d %sGreen%s pixels that are not perfectly matching.",g,GRN,RESET);
+    cr_assert_eq(b,0,"There are %d %sBlue%s pixels that are not matching",b,BLU,RESET);
+    cr_assert_eq(r,0,"There are %d %sRed%s pixels that are not matching",r,RED,RESET);
+    cr_assert_eq(g,0,"There are %d %sGreen%s pixels that are not matching",g,GRN,RESET);
     header_write(fSaida, bmpnum, fHeader, header);
     rgb_tofile(rgb_channels, fSaida);
     free_rgb_channels(rgb_channels);

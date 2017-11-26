@@ -3,70 +3,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h> 
-static const double quantization_Y[8][8]={
-  {16, 11, 10, 16, 24,  40,  51,  61},
-  {12, 12, 14, 19, 26,  58,  60,  55},
-  {14, 13, 16, 24, 40,  57,  69,  56},
-  {14, 17, 22, 29, 51,  87,  80,  62},
-  {18, 22, 37, 56, 68,  109, 103, 77},
-  {24, 35, 55, 64, 81,  104, 113, 92},
-  {49, 64, 78, 87, 103, 121, 120, 101},
-  {72, 92, 95, 98, 112, 100, 103, 99}};
-static const double quantization_Cb[8][8]={
-  {16, 11, 10, 16, 24,  40,  51,  61},
-  {12, 12, 14, 19, 26,  58,  60,  55},
-  {14, 13, 16, 24, 40,  57,  69,  56},
-  {14, 17, 22, 29, 51,  87,  80,  62},
-  {18, 22, 37, 56, 68,  109, 103, 77},
-  {24, 35, 55, 64, 81,  104, 113, 92},
-  {49, 64, 78, 87, 103, 121, 120, 101},
-  {72, 92, 95, 98, 112, 100, 103, 99}};
-static const double quantization_Cr[8][8]={
-  {16, 11, 10, 16, 24,  40,  51,  61},
-  {12, 12, 14, 19, 26,  58,  60,  55},
-  {14, 13, 16, 24, 40,  57,  69,  56},
-  {14, 17, 22, 29, 51,  87,  80,  62},
-  {18, 22, 37, 56, 68,  109, 103, 77},
-  {24, 35, 55, 64, 81,  104, 113, 92},
-  {49, 64, 78, 87, 103, 121, 120, 101},
-  {72, 92, 95, 98, 112, 100, 103, 99}};
 
-
-static const double dct_table[8][8]={
-  {1,   19,  37,  55,  73,  91,  109, 127},
-  {19,  37,  55,  73,  91,  109, 127, 145},
-  {37,  55,  73,  91,  109, 127, 145, 163},
-  {55,  73,  91,  109, 127, 145, 163, 181},
-  {73,  91,  109, 127, 145, 163, 181, 199},
-  {91,  109, 127, 145, 163, 181, 199, 217},
-  {109, 127, 145, 163, 181, 199, 217, 235},
-  {127, 145, 163, 181, 199, 217, 235, 253}};
-
-double ***RGB2YCbCr(unsigned char ***rgb_channel, int height ,int width);
-unsigned char ***YCbCr2RGB(double ***YCbCr_channels,int height, int width);
+int RGB2YCbCr(RGBChannel *rgb_channels,YCbCrChannel_Double *ycbcr_channels);
+int YCbCr2RGB(YCbCrChannel_Double *ycbcr_channels, RGBChannel *rgb_channels);
 
 double ****create_double_blocks(double **channels,int height, int width);
 void dct_transform(double **channel,double **dct_vector,int width,int height);
 void dct_untransform(double **coeficients,double **channel,int width,int height);
 
 double **intialize_dct_coefficients(int height, int width);
-double ***intialize_channels_double(int height, int width);
-unsigned char ***intialize_channels(int height, int width);
-
-void free_channels_double(int height, int width, double ***channels);
-void free_channels(int height,int width ,unsigned char ***channels);
-
 
 void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
     BMPINFOHEADER header);
 void bmp_magic(FILE *fEntrada, BMPMAGICNUMBER *bmpnum, BMPFILEHEADER *fHeader,
     BMPINFOHEADER *header);
 
-void rgb_tofile(unsigned char ***channels, FILE *fSaida, BMPINFOHEADER header);
+int rgb_tofile(RGBChannel *channels, FILE *fSaida);
 unsigned char bitsToByte(int bits[]);
 void read_channels(FILE *filein, unsigned char ***channels);
 int read_io(char *a, char *b, FILE **fEntrada, FILE **fSaida);
-void fileto_rgb(BMPINFOHEADER header, FILE *fEntrada,unsigned char ***channels);
+void fileto_rgb(FILE *fEntrada,RGBChannel *rgb_channels);
 
 void close_io(FILE *fEntrada, FILE *fSaida);
 
@@ -105,58 +61,75 @@ void debug_channels(unsigned char ***channels, BMPINFOHEADER header) {
     }
   }
 }
-unsigned char ***intialize_channels (int height, int width){
+int intialize_rgb_channels (RGBChannel *rgb_channels,int height, int width){
   int i, j;
-  unsigned char ***channels;
-  channels = malloc(3 * sizeof(unsigned char **));
-  if (channels == NULL) {
+  /* rgb_channels= (RGBChannel *) malloc(sizeof(RGBChannel)); */
+  rgb_channels->R=(unsigned char**) malloc (sizeof(unsigned char *) * height);
+  rgb_channels->B= (unsigned char**)malloc(sizeof(unsigned char *) * height);
+  rgb_channels->G=(unsigned char**) malloc(sizeof(unsigned char *) * height);
+  if (rgb_channels->R== NULL || rgb_channels->B==NULL || rgb_channels->G==NULL)
+  {
     printf("Memory exceeded");
+    return 0;
   }
-  for (i = 0; i < 3; i++) {
-    channels[i] = malloc(sizeof(unsigned char *) * height);
-    if (channels[i] == NULL) {
+  for (j = 0; j < height; j++) {
+    rgb_channels->R[j]=(unsigned char*) malloc(sizeof(unsigned char ) * width);
+    rgb_channels->B[j]= (unsigned char*)malloc(sizeof(unsigned char ) * width);
+    rgb_channels->G[j]=(unsigned char*) malloc(sizeof(unsigned char ) * width);
+    if (rgb_channels->R[j]== NULL || rgb_channels->B[j]==NULL || rgb_channels->G[j]==NULL){
       printf("Memory exceeded");
+      return 0;
+    }}
+  rgb_channels->width= width;
+  rgb_channels->height= height;
+  return 1;
+}
+int intialize_ycbcr_uc_channels(YCbCrChannel_UC *ycbcr_channels,int height, int width){
+  int i, j;
+  ycbcr_channels->Y=(unsigned char**) malloc(sizeof(unsigned char *) * height);
+  ycbcr_channels->Cb= (unsigned char**)malloc(sizeof(unsigned char *) * height);
+  ycbcr_channels->Cr=(unsigned char**)malloc (sizeof(unsigned char *) * height);
+  if (ycbcr_channels->Y== NULL || ycbcr_channels->Cb==NULL || ycbcr_channels->Cr==NULL)
+  {
+    printf("Memory exceeded");
+    return 0;
+  }
+  for (j = 0; j < height; j++) {
+    ycbcr_channels->Y[j]=(unsigned char*) malloc(sizeof(unsigned char ) * width);
+    ycbcr_channels->Cb[j]= (unsigned char*)malloc(sizeof(unsigned char ) * width);
+    ycbcr_channels->Cr[j]=(unsigned char*) malloc(sizeof(unsigned char ) * width);
+    if (ycbcr_channels->Y[j]== NULL || ycbcr_channels->Cb[j]==NULL || ycbcr_channels->Cr[j]==NULL){
+      printf("Memory exceeded");
+      return 0;
     }
   }
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < height; j++) {
-      channels[i][j] = malloc(sizeof(unsigned char) * width);
-      if (channels[i][j] == NULL) {
-        printf("Memory exceeded");
-      }
-    }
-  }
-  return channels;
+  ycbcr_channels->width= width;
+  ycbcr_channels->height= height;
+  return 1;
 }
 
-
-double ***intialize_channels_double(int height, int width) {
+int intialize_ycbcr_double_channels(YCbCrChannel_Double *ycbcr_channels,int height, int width){
   int i, j;
-  double ***channels;
-  printf("Check1");
-  channels =(double ***) malloc(3 * sizeof(double **));
-  if (channels == NULL) {
-    printf("Memory exceeded");
+  ycbcr_channels->Y=(double**) malloc(sizeof(double *) * height);
+  ycbcr_channels->Cb= (double**)malloc(sizeof(double *) * height);
+  ycbcr_channels->Cr=(double**) malloc(sizeof(double *) * height);
+  if (ycbcr_channels->Y== NULL|| ycbcr_channels->Cb==NULL|| ycbcr_channels->Cr==NULL)
+  {
+    printf("memory exceeded");
+    return 0;
   }
-  printf("Check2");
-  for (i = 0; i < 3; i++) {
-    channels[i] = (double **)malloc(sizeof(double *) * height);
-    if (channels[i] == NULL) {
-      printf("Memory exceeded");
-    }
-  }
-  printf("Check3");
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < height; j++) {
-      channels[i][j] = (double *) malloc(sizeof(double) * width);
-      if (channels[i][j] == NULL) {
-        printf("Memory exceeded");
-      }
-    }
-  }
-  return channels;
+  for (j = 0; j < height; j++) {
+    ycbcr_channels->Y[j]=(double*) malloc(sizeof(double ) * width);
+    ycbcr_channels->Cb[j]= (double*)malloc(sizeof(double ) * width);
+    ycbcr_channels->Cr[j]=(double*) malloc(sizeof(double ) * width);
+    if (ycbcr_channels->Y[j]== NULL || ycbcr_channels->Cb[j]==NULL|| ycbcr_channels->Cr[j]==NULL ){
+      printf("memory exceeded");
+      return 0;
+    }}
+  ycbcr_channels->width= width;
+  ycbcr_channels->height= height;
+  return 1;
 }
-
 void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
     BMPINFOHEADER header) {
   fwrite(&bmpnum, 2, 1, fSaida);
@@ -164,60 +137,57 @@ void header_write(FILE *fSaida, BMPMAGICNUMBER bmpnum, BMPFILEHEADER fHeader,
   fwrite(&header, sizeof(BMPINFOHEADER), 1, fSaida);
 }
 
-double ***RGB2YCbCr(unsigned char ***rgb_channels,int height, int width){
-  double ***YCbCr_channels = intialize_channels_double(height,width);
+int RGB2YCbCr(RGBChannel *rgb_channels, YCbCrChannel_Double *ycbcr_channels){
+  int  height = rgb_channels->height;
+  int  width= rgb_channels->width;
   double Y, Cb, Cr, R, G, B;
   for (int i = 0; i < height; i++) {
     for (int j = 0; j < width; j++) {
-      R = (double)rgb_channels[2][i][j];
-      G = (double)rgb_channels[1][i][j];
-      B = (double)rgb_channels[0][i][j];
+      R = (double)rgb_channels->R[i][j];
+      G = (double)rgb_channels->G[i][j];
+      B = (double)rgb_channels->B[i][j];
       Y = 0.114 * B + 0.587 * G + 0.299 * R ;
-      /* Y= Y>255? 255 : Y; */
       Cb = 0.564 * (B - Y);
-      /* Cb= Cb>255? 255 : Cb; */
       Cr = 0.713 * (R - Y);
-      /* Cr= Cr>255? 255 : Cr; */
-      YCbCr_channels[0][i][j] = Y;
-      YCbCr_channels[1][i][j] = Cb;
-      YCbCr_channels[2][i][j] = Cr;
+      ycbcr_channels->Y[i][j] = Y;
+      ycbcr_channels->Cb[i][j] = Cb;
+      ycbcr_channels->Cr[i][j] = Cr;
     }
   }
-  return YCbCr_channels;
+  return 1;
 }
 
-unsigned char ***YCbCr2RGB(double ***YCbCr_channels, int height, int width   ) {
-  unsigned char ***rgb_channels = intialize_channels(height, width);
+int YCbCr2RGB(YCbCrChannel_Double *ycbcr_channels,  RGBChannel *rgb_channels) {
+  int height = ycbcr_channels->height;
+  int width = ycbcr_channels->width;
   double Y, Cb, Cr, R, G, B;
   for (int i = 0; i < height; i++) {
     for (int j = 0; j < width; j++) {
-      Y = YCbCr_channels[0][i][j];
-      Cb = YCbCr_channels[1][i][j];
-      Cr = YCbCr_channels[2][i][j];
-      /* Cb =(double) YCbCr_channels[1][i][j]-128; */
-      /* Cr =(double) YCbCr_channels[2][i][j]-128; */
-      R = Y + 1.402 * Cr;
-      G = Y - 0.344 * Cb - 0.714 * Cr;
-      B = Y + 1.772 * Cb;
-      /*Blue mask */
-      rgb_channels[0][i][j] = (unsigned char)round(B);
-      /*Green mask */
-      rgb_channels[1][i][j] = (unsigned char)round(G);
-      /*Red mask */
-      rgb_channels[2][i][j] = (unsigned char)round(R);
+      Y = ycbcr_channels->Y[i][j];
+      Cb = ycbcr_channels->Cb[i][j];
+      Cr = ycbcr_channels->Cr[i][j];
+      R = (int) round(Y + 1.402 * Cr);
+      G = (int)round(Y - 0.344 * Cb - 0.714 * Cr);
+      B = (int) round(Y + 1.772 * Cb);
+      rgb_channels->B[i][j] = B;
+      rgb_channels->G[i][j] = G;
+      rgb_channels->R[i][j] = R;
     }
   }
-  return rgb_channels;
+  return 1;
 }
 
-void rgb_tofile(unsigned char ***channels, FILE *fSaida, BMPINFOHEADER header) {
-  for (int i = 0; i < header.biHeight; i++) {
-    for (int j = 0; j < header.biWidth; j++) {
-      fputc(channels[0][i][j], fSaida);
-      fputc(channels[1][i][j], fSaida);
-      fputc(channels[2][i][j], fSaida);
+int rgb_tofile(RGBChannel *channels, FILE *fSaida) {
+  int height= channels->height;
+  int width= channels->width;
+  for (int i = 0; i < height; i++) {
+    for (int j = 0; j < width; j++) {
+      fputc(channels->B[i][j], fSaida);
+      fputc(channels->G[i][j], fSaida);
+      fputc(channels->R[i][j], fSaida);
     }
   }
+  return 1;
 }
 unsigned char bitsToByte(int bits[]) {
   unsigned char meuByte = 0;
@@ -254,23 +224,44 @@ int error_happened(FILE *file, char *name) {
     return (0);
   }
 }
-void free_channels(int height, int width , unsigned char ***channels) {
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < height; j++) {
-      free(channels[i][j]);
-    }
-    free(channels[i]);
+
+int free_rgb_channels(RGBChannel *channels) {
+  for (int j = 0; j < channels->height; j++) {
+    free(channels->R[j]);
+    free(channels->G[j]);
+    free(channels->B[j]);
   }
+  free(channels->R);
+  free(channels->G);
+  free(channels->B);
   free(channels);
+  return 1;
 }
-void free_channels_double(int height, int width, double ***channels) {
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < height; j++) {
-      free(channels[i][j]);
-    }
-    free(channels[i]);
+
+int free_ycbcr_double_channels(YCbCrChannel_Double *channels) {
+  for (int j = 0; j < channels->height; j++) {
+    free(channels->Y[j]);
+    free(channels->Cb[j]);
+    free(channels->Cr[j]);
   }
+  free(channels->Y);
+  free(channels->Cb);
+  free(channels->Cr);
   free(channels);
+  return 1;
+}
+
+int free_ycbcr_uc(YCbCrChannel_UC *channels) {
+  for (int j = 0; j < channels->height; j++) {
+    free(channels->Y[j]);
+    free(channels->Cb[j]);
+    free(channels->Cr[j]);
+  }
+  free(channels->Y);
+  free(channels->Cb);
+  free(channels->Cr);
+  free(channels);
+  return 1;
 }
 void free_dct_coefficients(int height, int width, double **channels) {
   for (int j = 0; j < height; j++) {
@@ -278,19 +269,17 @@ void free_dct_coefficients(int height, int width, double **channels) {
   }
   free(channels);
 }
-void fileto_rgb(BMPINFOHEADER header, FILE *fEntrada,
-    unsigned char ***channels) {
+void fileto_rgb(FILE *fEntrada,  RGBChannel *rgb_channels) {
   int i, j, b, g, r;
   fseek(fEntrada, 54, SEEK_SET);
-  for (i = 0; i < header.biHeight; i++) {
-    for (j = 0; j < header.biWidth; j++) {
+  for (i = 0; i < rgb_channels->height; i++) {
+    for (j = 0; j < rgb_channels->width; j++) {
       b = fgetc(fEntrada);
       g = fgetc(fEntrada);
       r = fgetc(fEntrada);
-      /* printf("%d %d %d", b, g, r); */
-      channels[0][i][j] = (unsigned char)b;
-      channels[1][i][j] = (unsigned char)g;
-      channels[2][i][j] = (unsigned char)r;
+      rgb_channels->B[i][j] = (unsigned char)b;
+      rgb_channels->G[i][j] = (unsigned char)g;
+      rgb_channels->R[i][j] = (unsigned char)r;
     }
   }
 }
@@ -356,7 +345,7 @@ void dct_transform(double **channel,double **dct_vector,int width,int height)
       ck2=  (k2==0)?1/sqrt(2.0):1 ;
       for(int n1=0;n1<height;n1++){
         for(int n2=0;n2<width;n2++){
-           dct_vector[k1][k2] =+ck1*ck2* channel_aux[n1][n2]*
+          dct_vector[k1][k2] =+ck1*ck2* channel_aux[n1][n2]*
             cos((double)(2*k2+1) * (double)n2 * M_PI/16.0) *
             cos((double)(2*k1+1) * (double)n1 * M_PI/16.0);
         }
@@ -388,7 +377,7 @@ void dct_untransform(double **coeficients,double **channel,int width,int height)
       ck2=  (k2==0)?1/sqrt(2.0):1 ;
       for(int n1=0;n1<height;n1++){
         for(int n2=0;n2<width;n2++){
-      channel[k1][k2] =+ck1*ck2* coefficients_aux[n1][n2]*
+          channel[k1][k2] =+ck1*ck2* coefficients_aux[n1][n2]*
             cos((double)(2*n2+1) * (double)k2 * M_PI/16.0) *
             cos((double)(2*n1+1) * (double)k1 * M_PI/16.0);
         }
@@ -487,7 +476,7 @@ void quantize_block(double ****blocks, int channel_height, int channel_width){
     for (int j = 0; j < block_width-1; j++) {
       for (int k = 0; k < 8; k++) {
         for (int l= 0; l < 8; l++) {
-          blocks[i][j][k][l]= blocks[i][j][k][l]/quantization_table[k][l];
+          blocks[i][j][k][l]= blocks[i][j][k][l]/quantization_Y[k][l];
         }  
       }
     }
@@ -507,7 +496,7 @@ void dequantize_block(double ****blocks, int channel_height, int channel_width){
     for (int j = 0; j < block_width-1; j++) {
       for (int k = 0; k < 8; k++) {
         for (int l= 0; l < 8; l++) {
-          blocks[i][j][k][l]= blocks[i][j][k][l]*quantization_table[k][l];
+          blocks[i][j][k][l]= blocks[i][j][k][l]*quantization_Y[k][l];
         }  
       }
     }
