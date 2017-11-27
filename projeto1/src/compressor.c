@@ -89,13 +89,14 @@ int intialize_zigzag_vector(ZigZagVector *zig_zag,int block_height, int block_wi
   zig_zag->next_index=0;
   return 1;
 }
-int append_block(ZigZagVector *zig_zag,Block *block){
+int ZigZag2Block(ZigZagVector *zig_zag, Block *block ){
   int i=0,x=0,y=0;
-  int index=zig_zag->next_index;
   int right=1,diag_left_down=0,down=0,diag_right_up=0;
-  unsigned char aux=0;
+  int index=zig_zag->next_index;
+  double aux=0;
   for(i=0;i<64;i++){
-    aux =(unsigned char)block->values[x][y];
+    aux =(double)zig_zag->vector[i+index];
+    block->values[x][y]=aux;
     if(right){
       y++;
       right=0;
@@ -140,9 +141,93 @@ int append_block(ZigZagVector *zig_zag,Block *block){
         down=1;
       }
     }
+  zig_zag->next_index=index+64;
+  }
+  return 1;
+}
+int append_block(Block *block,ZigZagVector *zig_zag){
+  int i=0,x=0,y=0;
+  int index=zig_zag->next_index;
+  int right=1,diag_left_down=0,down=0,diag_right_up=0;
+  unsigned char aux=0;
+  for(i=0;i<64;i++){
+    aux =(unsigned char)block->values[x][y];
     zig_zag->vector[index+i]=aux;
+    if(right){
+      y++;
+      right=0;
+      if(x==0){
+        diag_left_down=1;
+      }
+      else{
+        diag_right_up=1;
+      }
+    }
+    else if(diag_left_down){
+      y--;
+      x++;
+      if(x==7){
+        diag_left_down=0;
+        right=1;
+      }
+      else if(y==0){
+        diag_left_down=0;
+        down=1;
+      }
+    }
+    else if(down){
+      down=0;
+      x++;
+      if(y==0){
+        diag_right_up=1;
+      }
+      else{
+        diag_left_down=1;
+      }
+    }
+    else if(diag_right_up){
+      x--;
+      y++;
+      if(x==0){
+        diag_right_up=0;
+        right=1;
+      }
+      else if(y==7){
+        diag_right_up=0;
+        down=1;
+      }
+    }
   }
   zig_zag->next_index=index+64;
+  return 1;
+}
+int BlockMatrix2ZigZags(BlockMatrix *block_matrix, ZigZagVector *zig_zag_y,ZigZagVector *zig_zag_cb,ZigZagVector *zig_zag_cr){
+  int i,j;
+  int width=block_matrix->width;
+  int height=block_matrix->height;
+  for (i = 0; i < height; i++) {
+    for (j = 0; j < width; j++) {
+     append_block(&(block_matrix->Y_block[i][j]),zig_zag_y);
+     append_block(&(block_matrix->Cb_block[i][j]),zig_zag_cb);
+     append_block(&(block_matrix->Cr_block[i][j]),zig_zag_cr);
+    }
+  }
+  return 1;
+}
+int ZigZags2BlockMatrix(ZigZagVector *zig_zag_y,ZigZagVector *zig_zag_cb,ZigZagVector *zig_zag_cr,BlockMatrix *block_matrix){
+  int i,j;
+  int width=block_matrix->width;
+  int height=block_matrix->height;
+  zig_zag_y->next_index=0;
+  zig_zag_cb->next_index=0;
+  zig_zag_cr->next_index=0;
+  for (i = 0; i < height; i++) {
+    for (j = 0; j < width; j++) {
+     ZigZag2Block(zig_zag_y,&(block_matrix->Y_block[i][j]));
+     ZigZag2Block(zig_zag_cb,&(block_matrix->Cb_block[i][j]));
+     ZigZag2Block(zig_zag_cr,&(block_matrix->Cr_block[i][j]));
+    }
+  }
   return 1;
 }
 int intialize_rgb_channels (RGBChannel *rgb_channels,int height, int width){

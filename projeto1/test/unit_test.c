@@ -404,11 +404,104 @@ Test(zigzagscan, append_block){
       block->values[i][j]=i+j;
     }
   }
-  append_block(zigzag,block);
+  append_block(block,zigzag);
   cr_assert_eq(zigzag->vector[63],14,"valor esperado 14 obtido %d",zigzag->vector[63]);
   cr_assert_eq(zigzag->vector[0],0,"valor esperado 0 obtido %d",zigzag->vector[0]);
   free(zigzag);
   free(block);
+}
+Test(zigzagscan, zigzag2block){
+  int i=0,j=0,value=0;
+  Block *block;
+  block= (Block*) malloc(sizeof(Block));
+  ZigZagVector *zigzag;
+  zigzag= (ZigZagVector *) malloc(sizeof(ZigZagVector));
+  intialize_zigzag_vector(zigzag,1,1);
+  for (i = 0; i < 8; i++) {
+    for (j = 0;  j< 8; j++) {
+      block->values[i][j]=i+j;
+    }
+  }
+  /* print_block(*block); */
+  append_block(block,zigzag);
+  zigzag->next_index=0;
+  ZigZag2Block(zigzag,block);
+  /* print_block(*block); */
+  cr_expect_eq(block->values[0][0],0,"valor esperado 0 obtido \n %f",block->values[0][0]);
+  cr_expect_eq(block->values[7][7],14,"valor esperado 14 obtido \n %f",block->values[7][7]);
+  free(zigzag);
+  free(block);
+}
+
+Test(zigzagscan, block_matrix_conversion){
+  FILE *fEntrada;
+  FILE *fSaida;
+  BMPMAGICNUMBER bmpnum;
+  BMPFILEHEADER fHeader;
+  BMPINFOHEADER header;
+  RGBChannel *rgb_channels;
+  RGBChannel *reverted_channels;
+  rgb_channels= (RGBChannel *) malloc(sizeof(RGBChannel));
+  reverted_channels= (RGBChannel *) malloc(sizeof(RGBChannel));
+  YCbCrChannel_Double *ycbcr_channels;
+  ycbcr_channels= (YCbCrChannel_Double *) malloc(sizeof(YCbCrChannel_Double));
+  YCbCrChannel_Double *ycbcr_channels_aux;
+  ycbcr_channels_aux= (YCbCrChannel_Double *) malloc(sizeof(YCbCrChannel_Double));
+  BlockMatrix *block_matrix;
+  BlockMatrix *dct_block_matrix_aux;
+  BlockMatrix *dct_block_matrix_untransformed;
+  block_matrix= (BlockMatrix *) malloc(sizeof(BlockMatrix));
+  dct_block_matrix_aux= (BlockMatrix *) malloc(sizeof(BlockMatrix));
+  dct_block_matrix_untransformed= (BlockMatrix *) malloc(sizeof(BlockMatrix));
+  ZigZagVector *zigzag_y;
+  ZigZagVector *zigzag_cb;
+  ZigZagVector *zigzag_cr;
+  zigzag_y= (ZigZagVector *) malloc(sizeof(ZigZagVector));
+  zigzag_cb= (ZigZagVector *) malloc(sizeof(ZigZagVector));
+  zigzag_cr= (ZigZagVector *) malloc(sizeof(ZigZagVector));
+
+  int height=  reverted_channels->height;
+  int width= reverted_channels->width;
+  int b = 0, g = 0, r = 0,i,j;
+  read_io("img/teste.bmp","img/block_matrix_conversion.bmp" , &fEntrada, &fSaida);
+  bmp_magic(fEntrada, &bmpnum, &fHeader, &header);
+  intialize_rgb_channels(rgb_channels, header.biHeight, header.biWidth);
+  intialize_rgb_channels(reverted_channels, header.biHeight, header.biWidth);
+  intialize_ycbcr_double_channels(ycbcr_channels, header.biHeight, header.biWidth);
+  intialize_ycbcr_double_channels(ycbcr_channels_aux, header.biHeight, header.biWidth);
+  intialize_block_matrix(block_matrix, ycbcr_channels->height, ycbcr_channels->width);
+  intialize_block_matrix(dct_block_matrix_aux, ycbcr_channels->height, ycbcr_channels->width);
+  intialize_block_matrix(dct_block_matrix_untransformed, ycbcr_channels->height, ycbcr_channels->width);
+  intialize_zigzag_vector(zigzag_y,block_matrix->height,block_matrix->width);
+  intialize_zigzag_vector(zigzag_cb,block_matrix->height, block_matrix->width);
+  intialize_zigzag_vector(zigzag_cr, block_matrix->height, block_matrix->width);
+  fileto_rgb(fEntrada, rgb_channels);
+  RGB2YCbCr(rgb_channels,ycbcr_channels);
+  YCbCr2Blocks(ycbcr_channels, block_matrix);
+  DctBlockMatrix(block_matrix, dct_block_matrix_aux);
+  QuantizeBlockMatrix(dct_block_matrix_aux,block_matrix);
+  /* BlockMatrix2ZigZags(block_matrix, zigzag_y,zigzag_cb,zigzag_cr); */
+  /* ZigZags2BlockMatrix(zigzag_y,zigzag_cb,zigzag_cr,block_matrix); */
+  DequantizeBlockMatrix(block_matrix,dct_block_matrix_aux);
+  IdctBlockMatrix(dct_block_matrix_aux, dct_block_matrix_untransformed);
+  Blocks2YCbCr(dct_block_matrix_untransformed, ycbcr_channels);
+  YCbCr2RGB(ycbcr_channels,reverted_channels);
+  for (i = 0; i < height; i++) {
+    for (j = 0; j < width; j++) {
+      if(abs(reverted_channels->B[i][j] - rgb_channels->B[i][j])>5)b++;
+      if(abs(reverted_channels->R[i][j] - rgb_channels->R[i][j])>5)r++;
+      if(abs(reverted_channels->G[i][j] - rgb_channels->G[i][j])>5)g++;
+    }}
+  cr_assert_eq(b,0,"There are %d %sBlue%s pixels that are wrong.",b,BLU,RESET);
+  cr_assert_eq(r,0,"There are %d %sRed%s pixels that are wrong.",r,RED,RESET);
+  cr_assert_eq(g,0,"There are %d %sGreen%s pixels that are wrong.",g,GRN,RESET);
+  header_write(fSaida, bmpnum, fHeader, header);
+  rgb_tofile(reverted_channels, fSaida);
+  free_rgb_channels(rgb_channels);
+  free_rgb_channels(reverted_channels);
+  free_ycbcr_double_channels(ycbcr_channels);
+  close_io(fEntrada, fSaida);
+  return;
 }
 Test(rle, anyone_2_big){
   FILE *fEntrada;
@@ -454,7 +547,7 @@ Test(rle, anyone_2_big){
       if(ycbcr_channels->Cb[i][j]>255)cr++;
       if(ycbcr_channels->Cr[i][j]>255)cb++;
     }}
-  cr_assert_eq(y,0,"There are %d %Y%s pixels that are wrong.",y,BLU,RESET);
+  cr_assert_eq(y,0,"There are %d  %sY%s pixels that are wrong.",y,BLU,RESET);
   cr_assert_eq(cr,0,"There are %d %sCr%s pixels that are wrong.",cr,RED,RESET);
   cr_assert_eq(cb,0,"There are %d %sCb%s pixels that are wrong.",cb,GRN,RESET);
   header_write(fSaida, bmpnum, fHeader, header);
