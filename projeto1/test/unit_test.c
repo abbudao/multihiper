@@ -405,12 +405,6 @@ for (i = 0; i < 8; i++) {
   }
 }
 append_block(zigzag,block);
-for(i=0;i<64;i++){
-  if(i%8==0){
-    printf("\n");
-  }
-  printf("%d \t",zigzag->vector[i]);
-}
 cr_assert_eq(zigzag->vector[63],14,"valor esperado 14 obtido %d",zigzag->vector[63]);
 cr_assert_eq(zigzag->vector[0],0,"valor esperado 0 obtido %d",zigzag->vector[0]);
 free(zigzag);

@@ -95,31 +95,32 @@ int append_block(ZigZagVector *zig_zag,Block *block){
   int right=1,diag_left_down=0,down=0,diag_right_up=0;
   unsigned char aux=0;
   for(i=0;i<64;i++){
+    aux =(unsigned char)block->values[x][y];
     if(right){
       y++;
       right=0;
-        if(x==0){
-          diag_left_down=1;
-        }
-        else{
-          diag_right_up=1;
-        }
+      if(x==0){
+        diag_left_down=1;
+      }
+      else{
+        diag_right_up=1;
+      }
     }
     else if(diag_left_down){
       y--;
       x++;
-      if(y==0){
-        diag_left_down=0;
-        down=1;
-      }
-      else if(x==7){
+      if(x==7){
         diag_left_down=0;
         right=1;
       }
+      else if(y==0){
+        diag_left_down=0;
+        down=1;
       }
+    }
     else if(down){
-        down=0;
-        x++;
+      down=0;
+      x++;
       if(y==0){
         diag_right_up=1;
       }
@@ -131,14 +132,15 @@ int append_block(ZigZagVector *zig_zag,Block *block){
       x--;
       y++;
       if(x==0){
+        diag_right_up=0;
         right=1;
       }
       else if(y==7){
+        diag_right_up=0;
         down=1;
       }
     }
-     aux =(unsigned char)block->values[x][y];
-     zig_zag->vector[index+i]=aux;
+    zig_zag->vector[index+i]=aux;
   }
   zig_zag->next_index=index+64;
   return 1;
