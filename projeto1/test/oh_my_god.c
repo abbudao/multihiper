@@ -90,7 +90,7 @@ int intialize_zigzag_vector(ZigZagVector *zig_zag,int block_height, int block_wi
   return 1;
 }
 int append_block(ZigZagVector *zig_zag,Block *block){
-  int i=0,x=0,y=0;
+  int i,x=0,y=0;
   int index=zig_zag->next_index;
   int right=1,diag_left_down=0,down=0,diag_right_up=0;
   unsigned char aux=0;

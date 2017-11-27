@@ -391,3 +391,28 @@ Test(quantization, on_Image)
   close_io(fEntrada, fSaida);
   return;
 }
+
+Test(zigzagscan, append_block){
+int i=0,j=0,value=0;
+Block *block;
+block= (Block*) malloc(sizeof(Block));
+ZigZagVector *zigzag;
+zigzag= (ZigZagVector *) malloc(sizeof(ZigZagVector));
+intialize_zigzag_vector(zigzag,1,1);
+for (i = 0; i < 8; i++) {
+  for (j = 0;  j< 8; j++) {
+   block->values[i][j]=i+j;
+  }
+}
+append_block(zigzag,block);
+for(i=0;i<64;i++){
+  if(i%8==0){
+    printf("\n");
+  }
+  printf("%d \t",zigzag->vector[i]);
+}
+cr_assert_eq(zigzag->vector[63],14,"valor esperado 14 obtido %d",zigzag->vector[63]);
+cr_assert_eq(zigzag->vector[0],0,"valor esperado 0 obtido %d",zigzag->vector[0]);
+free(zigzag);
+free(block);
+}
